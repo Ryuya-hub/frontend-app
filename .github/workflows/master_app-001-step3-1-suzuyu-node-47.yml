@@ -6,7 +6,7 @@ name: Build and deploy Node.js app to Azure Web App - app-001-step3-1-suzuyu-nod
 on:
   push:
     branches:
-      - master
+      - master  # 必要であれば main に変更
   workflow_dispatch:
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
           npm run test --if-present
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: zip -r release.zip .  # フォルダ丸ごとzip化
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -43,22 +43,26 @@ jobs:
     needs: build
     environment:
       name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    
+      # urlはstepsでset-outputしてから指定する必要があります（下で設定）
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: node-app
 
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-      
+      # Unzipは省略して、zipファイルを直接デプロイする方法が一番安定
+      # - name: Unzip artifact for deployment
+      #   run: unzip release.zip
+
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'app-001-step3-1-suzuyu-node-47'
-          slot-name: 'Production'
-          package: .
+          # slot-name: 'Production'   # Productionの場合、省略もOK
+          package: release.zip
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_25846588C4014F78A764CCB89401F795 }}
+
+    outputs:
+      webapp-url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
